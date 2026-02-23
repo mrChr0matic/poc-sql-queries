@@ -1,0 +1,46 @@
+resources:
+  jobs:
+    New_Job_Dec_16_2025_02_39_PM:
+      name: New Job Dec 16, 2025, 02:39 PM
+      max_concurrent_runs: 15
+      tasks:
+        - task_key: run_llm_pipeline
+          spark_python_task:
+            python_file: /Workspace/Users/abishek.nair@sigmoidanalytics.com/ConsumtionEstimate/entrypoint.py
+            parameters:
+              - '{"image_uris":["https://res.cloudinary.com/dug1uuu9g/image/upload/v1765951816/mj2ulwuyyidudae5kenj.jpg"],"file_uris":["https://costestimatorstorage.blob.core.windows.net/finops-output/de.pdf"],"client_name":"new_client","use_case_name":"test_usecase","markets":[{"market":"M1","multiplier":1.0,"start_month":1}],"user_prompt":"Assume
+                enterprise-grade HA architecture with DR","budget":250000}'
+          job_cluster_key: consumption_calc_cluster
+          libraries:
+            - pypi:
+                package: azure-storage-blob
+            - pypi:
+                package: openai
+            - pypi:
+                package: google-api-python-client
+            - pypi:
+                package: google-auth
+            - pypi:
+                package: openpyxl
+            - pypi:
+                package: requests
+      job_clusters:
+        - job_cluster_key: consumption_calc_cluster
+          new_cluster:
+            cluster_name: ""
+            spark_version: 18.0.x-scala2.13
+            azure_attributes:
+              availability: SPOT_WITH_FALLBACK_AZURE
+              spot_bid_max_price: 100
+            node_type_id: Standard_D2ads_v6
+            spark_env_vars:
+              PYSPARK_PYTHON: /databricks/python3/bin/python3
+            policy_id: 001EE9D516BD44CC
+            data_security_mode: SINGLE_USER
+            runtime_engine: STANDARD
+            kind: CLASSIC_PREVIEW
+            is_single_node: false
+            num_workers: 1
+      queue:
+        enabled: true
+
