@@ -1,0 +1,87 @@
+{
+  "settings": {
+    "email_notifications": {
+      "no_alert_for_skipped_runs": false
+    },
+    "format": "MULTI_TASK",
+    "job_clusters": [
+      {
+        "job_cluster_key": "consumption_calc_cluster",
+        "new_cluster": {
+          "azure_attributes": {
+            "availability": "SPOT_WITH_FALLBACK_AZURE",
+            "spot_bid_max_price": 100
+          },
+          "cluster_name": "",
+          "data_security_mode": "SINGLE_USER",
+          "is_single_node": false,
+          "kind": "CLASSIC_PREVIEW",
+          "node_type_id": "Standard_D2ads_v6",
+          "num_workers": 1,
+          "policy_id": "001EE9D516BD44CC",
+          "runtime_engine": "STANDARD",
+          "spark_env_vars": {
+            "PYSPARK_PYTHON": "/databricks/python3/bin/python3"
+          },
+          "spark_version": "18.0.x-scala2.13"
+        }
+      }
+    ],
+    "max_concurrent_runs": 15,
+    "name": "New Job Dec 16, 2025, 02:39 PM",
+    "performance_target": "PERFORMANCE_OPTIMIZED",
+    "queue": {
+      "enabled": true
+    },
+    "tasks": [
+      {
+        "email_notifications": {},
+        "job_cluster_key": "consumption_calc_cluster",
+        "libraries": [
+          {
+            "pypi": {
+              "package": "azure-storage-blob"
+            }
+          },
+          {
+            "pypi": {
+              "package": "openai"
+            }
+          },
+          {
+            "pypi": {
+              "package": "google-api-python-client"
+            }
+          },
+          {
+            "pypi": {
+              "package": "google-auth"
+            }
+          },
+          {
+            "pypi": {
+              "package": "openpyxl"
+            }
+          },
+          {
+            "pypi": {
+              "package": "requests"
+            }
+          }
+        ],
+        "run_if": "ALL_SUCCESS",
+        "spark_python_task": {
+          "parameters": [
+            "{\"image_uris\":[\"https://res.cloudinary.com/dug1uuu9g/image/upload/v1765951816/mj2ulwuyyidudae5kenj.jpg\"],\"file_uris\":[\"https://costestimatorstorage.blob.core.windows.net/finops-output/de.pdf\"],\"client_name\":\"new_client\",\"use_case_name\":\"test_usecase\",\"markets\":[{\"market\":\"M1\",\"multiplier\":1.0,\"start_month\":1}],\"user_prompt\":\"Assume enterprise-grade HA architecture with DR\",\"budget\":250000}"
+          ],
+          "python_file": "/Workspace/Users/abishek.nair@sigmoidanalytics.com/ConsumtionEstimate/entrypoint.py"
+        },
+        "task_key": "run_llm_pipeline",
+        "timeout_seconds": 0,
+        "webhook_notifications": {}
+      }
+    ],
+    "timeout_seconds": 0,
+    "webhook_notifications": {}
+  }
+}
