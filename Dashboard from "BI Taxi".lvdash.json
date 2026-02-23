@@ -1,0 +1,1935 @@
+{
+  "datasets": [
+    {
+      "name": "b2c73431",
+      "displayName": "dash1",
+      "queryLines": [
+        "SELECT\n",
+        "    year,\n",
+        "    month,\n",
+        "    make_date(year, month, day) AS trip_date,\n",
+        "    time_bucket,\n",
+        "    vendor_id,\n",
+        "\n",
+        "    CASE\n",
+        "        WHEN :metric_selector = 'revenue'\n",
+        "            THEN SUM(total_amount)\n",
+        "\n",
+        "        WHEN :metric_selector = 'distance'\n",
+        "            THEN SUM(trip_distance)\n",
+        "\n",
+        "        WHEN :metric_selector = 'passengers'\n",
+        "            THEN SUM(passenger_count)\n",
+        "\n",
+        "        WHEN :metric_selector = 'trips'\n",
+        "            THEN COUNT(*)\n",
+        "    END AS selected_metric\n",
+        "\n",
+        "FROM bi_taxi_secure\n",
+        "GROUP BY year, month, trip_date, time_bucket, vendor_id\n",
+        "ORDER BY trip_date;\n"
+      ],
+      "parameters": [
+        {
+          "displayName": "metric_selector",
+          "keyword": "metric_selector",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "passengers"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "catalog": "powerbi_poc",
+      "schema": "poc_schema"
+    },
+    {
+      "name": "277c3ee0",
+      "displayName": "Travel Metrics Overview",
+      "queryLines": [
+        "FROM ( VALUES ('passengers'), ('distance'), ('revenue'), ('trips') ) AS domain(values) SELECT values"
+      ],
+      "catalog": "powerbi_poc",
+      "schema": "poc_schema"
+    },
+    {
+      "name": "1bc576cf",
+      "displayName": "dash2",
+      "queryLines": [
+        "SELECT *\n",
+        "FROM (\n",
+        "\n",
+        "    SELECT\n",
+        "        year,\n",
+        "        month,\n",
+        "        make_date(year, month, day) AS trip_date,\n",
+        "        vendor_id,\n",
+        "        'revenue' AS metric_type,\n",
+        "        SUM(total_amount) AS metric_value\n",
+        "    FROM bi_taxi_secure\n",
+        "    GROUP BY year, month, make_date(year, month, day), vendor_id\n",
+        "\n",
+        "    UNION ALL\n",
+        "\n",
+        "    SELECT\n",
+        "        year,\n",
+        "        month,\n",
+        "        make_date(year, month, day),\n",
+        "        vendor_id,\n",
+        "        'distance',\n",
+        "        SUM(trip_distance)\n",
+        "    FROM bi_taxi_secure\n",
+        "    GROUP BY year, month, make_date(year, month, day), vendor_id\n",
+        "\n",
+        "    UNION ALL\n",
+        "\n",
+        "    SELECT\n",
+        "        year,\n",
+        "        month,\n",
+        "        make_date(year, month, day),\n",
+        "        vendor_id,\n",
+        "        'passengers',\n",
+        "        SUM(passenger_count)\n",
+        "    FROM bi_taxi_secure\n",
+        "    GROUP BY year, month, make_date(year, month, day), vendor_id\n",
+        "\n",
+        "    UNION ALL\n",
+        "\n",
+        "    SELECT\n",
+        "        year,\n",
+        "        month,\n",
+        "        make_date(year, month, day),\n",
+        "        vendor_id,\n",
+        "        'trips',\n",
+        "        COUNT(*)\n",
+        "    FROM bi_taxi_secure\n",
+        "    GROUP BY year, month, make_date(year, month, day), vendor_id\n",
+        "\n",
+        ") t\n",
+        "\n",
+        "WHERE metric_type = :metric_selector\n",
+        "ORDER BY trip_date;\n"
+      ],
+      "parameters": [
+        {
+          "displayName": "metric_selector",
+          "keyword": "metric_selector",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "passengers"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "catalog": "powerbi_poc",
+      "schema": "poc_schema"
+    },
+    {
+      "name": "5f306ea7",
+      "displayName": "metric_selector domain",
+      "queryLines": [
+        "FROM ( VALUES ('passengers'), ('trips'), ('distance'), ('revenue') ) AS domain(values) SELECT values"
+      ]
+    },
+    {
+      "name": "5fc18ac7",
+      "displayName": "dash3",
+      "queryLines": [
+        "WITH base AS (\n",
+        "  SELECT\n",
+        "    year,\n",
+        "    month,\n",
+        "    make_date(year,month,day) AS trip_date,\n",
+        "    vendor_id,\n",
+        "\n",
+        "    SUM(fare_amount) AS fare,\n",
+        "    SUM(tip_amount) AS tip,\n",
+        "    SUM(tolls_amount) AS tolls,\n",
+        "    SUM(extra) AS extra,\n",
+        "    SUM(mta_tax) AS mta_tax,\n",
+        "    SUM(improvement_surcharge) AS improvement\n",
+        "\n",
+        "  FROM bi_taxi_secure\n",
+        "  GROUP BY\n",
+        "    year,\n",
+        "    month,\n",
+        "    make_date(year,month,day),\n",
+        "    vendor_id\n",
+        ")\n",
+        "\n",
+        "SELECT year,month,trip_date,vendor_id,'Fare' AS fare_type,fare AS amount FROM base\n",
+        "UNION ALL\n",
+        "SELECT year,month,trip_date,vendor_id,'Tip',tip FROM base\n",
+        "UNION ALL\n",
+        "SELECT year,month,trip_date,vendor_id,'Tolls',tolls FROM base\n",
+        "UNION ALL\n",
+        "SELECT year,month,trip_date,vendor_id,'Extra',extra FROM base\n",
+        "UNION ALL\n",
+        "SELECT year,month,trip_date,vendor_id,'MTA Tax',mta_tax FROM base\n",
+        "UNION ALL\n",
+        "SELECT year,month,trip_date,vendor_id,'Improvement Surcharge',improvement FROM base;\n"
+      ],
+      "catalog": "powerbi_poc",
+      "schema": "poc_schema"
+    },
+    {
+      "name": "5867b2c1",
+      "displayName": "dash4",
+      "queryLines": [
+        "WITH base AS (\n",
+        "  SELECT\n",
+        "      year,\n",
+        "      month,\n",
+        "      make_date(year,month,day) AS trip_date,\n",
+        "      vendor_id,\n",
+        "\n",
+        "      SUM(total_amount) AS revenue,\n",
+        "      SUM(trip_distance) AS distance,\n",
+        "      COUNT(*) AS trips,\n",
+        "      SUM(passenger_count) AS passengers\n",
+        "\n",
+        "  FROM bi_taxi_secure\n",
+        "  GROUP BY\n",
+        "      year,\n",
+        "      month,\n",
+        "      make_date(year,month,day),\n",
+        "      vendor_id\n",
+        "),\n",
+        "\n",
+        "unpivoted AS (\n",
+        "  SELECT year,month,trip_date,vendor_id,'Revenue' AS metric_type,revenue AS metric_value FROM base\n",
+        "  UNION ALL\n",
+        "  SELECT year,month,trip_date,vendor_id,'Distance',distance FROM base\n",
+        "  UNION ALL\n",
+        "  SELECT year,month,trip_date,vendor_id,'Trips',trips FROM base\n",
+        "  UNION ALL\n",
+        "  SELECT year,month,trip_date,vendor_id,'Passengers',passengers FROM base\n",
+        ")\n",
+        "\n",
+        "SELECT\n",
+        "    year,\n",
+        "    month,\n",
+        "    trip_date,\n",
+        "    vendor_id,\n",
+        "    metric_type,\n",
+        "    metric_value,\n",
+        "\n",
+        "    -- normalization per metric_type (across vendors)\n",
+        "    (metric_value - MIN(metric_value) OVER (PARTITION BY metric_type))\n",
+        "    /\n",
+        "    NULLIF(\n",
+        "        MAX(metric_value) OVER (PARTITION BY metric_type)\n",
+        "        - MIN(metric_value) OVER (PARTITION BY metric_type),\n",
+        "        0\n",
+        "    ) AS heat_value\n",
+        "\n",
+        "FROM unpivoted\n",
+        "ORDER BY trip_date;\n"
+      ],
+      "catalog": "powerbi_poc",
+      "schema": "poc_schema"
+    },
+    {
+      "name": "670756aa",
+      "displayName": "Maps_data",
+      "queryLines": [
+        "WITH base AS (\n",
+        "  SELECT\n",
+        "    year,\n",
+        "    month,\n",
+        "    make_date(year, month, day) AS trip_date,\n",
+        "\n",
+        "    vendor_id,\n",
+        "\n",
+        "    ROUND(pickup_latitude,3)  AS pickup_lat,\n",
+        "    ROUND(pickup_longitude,3) AS pickup_lon,\n",
+        "\n",
+        "    ROUND(dropoff_latitude,3)  AS dropoff_lat,\n",
+        "    ROUND(dropoff_longitude,3) AS dropoff_lon,\n",
+        "\n",
+        "    COUNT(*) AS trip_count,\n",
+        "    SUM(total_amount) AS revenue\n",
+        "\n",
+        "  FROM powerbi_poc.poc_schema.bi_taxi_secure\n",
+        "\n",
+        "  GROUP BY\n",
+        "    year,\n",
+        "    month,\n",
+        "    make_date(year, month, day),\n",
+        "    vendor_id,\n",
+        "    ROUND(pickup_latitude,3),\n",
+        "    ROUND(pickup_longitude,3),\n",
+        "    ROUND(dropoff_latitude,3),\n",
+        "    ROUND(dropoff_longitude,3)\n",
+        ")\n",
+        "\n",
+        "SELECT *,\n",
+        "  CASE\n",
+        "    WHEN :kpi_selector='trips' THEN trip_count\n",
+        "    WHEN :kpi_selector='revenue' THEN revenue\n",
+        "  END AS selected_kpi\n",
+        "FROM base;"
+      ],
+      "parameters": [
+        {
+          "displayName": "kpi_selector",
+          "keyword": "kpi_selector",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "trips"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "catalog": "powerbi_poc",
+      "schema": "poc_schema"
+    },
+    {
+      "name": "3f538475",
+      "displayName": "Map_KPI",
+      "queryLines": [
+        "FROM ( VALUES ('trips'), ('revenue') ) AS domain(values) SELECT values"
+      ]
+    },
+    {
+      "name": "7c47bc81",
+      "displayName": "scores",
+      "queryLines": [
+        "WITH monthly AS (\n",
+        "  SELECT\n",
+        "      year,\n",
+        "      month,\n",
+        "      vendor_id,\n",
+        "\n",
+        "      SUM(total_amount)    AS revenue,\n",
+        "      COUNT(*)             AS trips,\n",
+        "      SUM(trip_distance)   AS distance,\n",
+        "      SUM(passenger_count) AS passengers\n",
+        "\n",
+        "  FROM bi_taxi_secure\n",
+        "  GROUP BY year, month, vendor_id\n",
+        "),\n",
+        "\n",
+        "calc AS (\n",
+        "  SELECT *,\n",
+        "      LAG(revenue) OVER (PARTITION BY vendor_id ORDER BY year,month) AS prev_revenue,\n",
+        "      LAG(trips) OVER (PARTITION BY vendor_id ORDER BY year,month) AS prev_trips,\n",
+        "      LAG(distance) OVER (PARTITION BY vendor_id ORDER BY year,month) AS prev_distance,\n",
+        "      LAG(passengers) OVER (PARTITION BY vendor_id ORDER BY year,month) AS prev_passengers\n",
+        "  FROM monthly\n",
+        ")\n",
+        "\n",
+        "SELECT\n",
+        "  vendor_id,\n",
+        "  year,\n",
+        "  month,\n",
+        "\n",
+        "  -- current\n",
+        "  revenue,\n",
+        "  trips,\n",
+        "  distance,\n",
+        "  passengers,\n",
+        "\n",
+        "  -- previous\n",
+        "  prev_revenue,\n",
+        "  prev_trips,\n",
+        "  prev_distance,\n",
+        "  prev_passengers\n",
+        "\n",
+        "FROM calc;\n"
+      ],
+      "catalog": "powerbi_poc",
+      "schema": "poc_schema"
+    }
+  ],
+  "pages": [
+    {
+      "name": "779cc193",
+      "displayName": "Page1",
+      "layout": [
+        {
+          "widget": {
+            "name": "2367edba",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "b2c73431",
+                  "fields": [
+                    {
+                      "name": "time_bucket",
+                      "expression": "`time_bucket`"
+                    },
+                    {
+                      "name": "sum(selected_metric)",
+                      "expression": "SUM(`selected_metric`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "frame": {
+                "title": "Visualization 1",
+                "showTitle": true
+              },
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "time_bucket",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "sum(selected_metric)",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 4,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "23e30530",
+            "queries": [
+              {
+                "name": "dashboards/01f10b3925861f61b7a5137ec1424514/datasets/01f10b3cd6a6177ab3e660a243cd4204_values",
+                "query": {
+                  "datasetName": "277c3ee0",
+                  "fields": [
+                    {
+                      "name": "values",
+                      "expression": "`values`"
+                    },
+                    {
+                      "name": "values_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f10b3925861f61b7a5137ec1424514/datasets/01f10b3cd6a617268bcb4e58ee5b6673_metric_selector",
+                "query": {
+                  "datasetName": "b2c73431",
+                  "parameters": [
+                    {
+                      "name": "metric_selector",
+                      "keyword": "metric_selector"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01f10b3925861f61b7a5137ec1424514/datasets/01f10bc69d1c134588363c810f1e52cd_metric_selector",
+                "query": {
+                  "datasetName": "1bc576cf",
+                  "parameters": [
+                    {
+                      "name": "metric_selector",
+                      "keyword": "metric_selector"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "title": "metric_selector",
+                "showTitle": true
+              },
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "parameterName": "metric_selector",
+                    "queryName": "parameter_dashboards/01f10b3925861f61b7a5137ec1424514/datasets/01f10b3cd6a617268bcb4e58ee5b6673_metric_selector"
+                  },
+                  {
+                    "fieldName": "values",
+                    "queryName": "dashboards/01f10b3925861f61b7a5137ec1424514/datasets/01f10b3cd6a6177ab3e660a243cd4204_values"
+                  },
+                  {
+                    "parameterName": "metric_selector",
+                    "queryName": "parameter_dashboards/01f10b3925861f61b7a5137ec1424514/datasets/01f10bc69d1c134588363c810f1e52cd_metric_selector"
+                  }
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 3,
+            "width": 5,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "e27d7524",
+            "queries": [
+              {
+                "name": "6af865a864f6445b9af594a7f4685ee6",
+                "query": {
+                  "datasetName": "1bc576cf",
+                  "fields": [
+                    {
+                      "name": "trip_date",
+                      "expression": "`trip_date`"
+                    },
+                    {
+                      "name": "metric_type",
+                      "expression": "`metric_type`"
+                    },
+                    {
+                      "name": "column_3c6c5ea631",
+                      "expression": "SUM(`metric_value`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 0,
+              "viz_spec": {
+                "display_name": "Visualization 1",
+                "viz_type": "CHART",
+                "serialized_options": "{\"series\":{\"error_y\":{\"type\":\"data\",\"visible\":true},\"stacking\":null},\"coefficient\":1,\"yAxis\":[{\"type\":\"-\"},{\"opposite\":true,\"type\":\"-\"}],\"columnConfigurationMap\":{\"series\":{\"column\":\"metric_type\",\"id\":\"column_3c6c5ea630\"},\"x\":{\"column\":\"trip_date\",\"id\":\"column_3c6c5ea629\"},\"y\":[{\"column\":\"metric_value\",\"id\":\"column_3c6c5ea631\",\"transform\":\"SUM\"}]},\"alignYAxesAtZero\":true,\"direction\":{\"type\":\"counterclockwise\"},\"swappedAxes\":false,\"percentFormat\":\"0[.]00%\",\"textFormat\":\"\",\"legend\":{\"traceorder\":\"normal\"},\"globalSeriesType\":\"line\",\"version\":2,\"sizemode\":\"diameter\",\"seriesOptions\":{\"column_3c6c5ea631\":{\"name\":\"metric_value\",\"yAxis\":0}},\"error_y\":{\"type\":\"data\",\"visible\":true},\"sortX\":true,\"showDataLabels\":false,\"missingValuesAsZero\":true,\"useAggregationsUi\":true,\"numberFormat\":\"0,0.[00000]\",\"dateTimeFormat\":\"DD/MM/YYYY HH:mm\",\"sortY\":true,\"valuesOptions\":{},\"xAxis\":{\"labels\":{\"enabled\":true},\"type\":\"-\"}}",
+                "query_name": "6af865a864f6445b9af594a7f4685ee6"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 10,
+            "width": 12,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "9310faca",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "5fc18ac7",
+                  "fields": [
+                    {
+                      "name": "sum(amount)",
+                      "expression": "SUM(`amount`)"
+                    },
+                    {
+                      "name": "fare_type",
+                      "expression": "`fare_type`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "mark": {
+                "layout": "stack"
+              },
+              "frame": {
+                "title": "Visualization 1",
+                "showTitle": true
+              },
+              "widgetType": "pie",
+              "encodings": {
+                "angle": {
+                  "fieldName": "sum(amount)",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "fare_type",
+                  "scale": {
+                    "type": "categorical",
+                    "mappings": [
+                      {
+                        "value": "Fare",
+                        "color": {
+                          "themeColorType": "visualizationColors",
+                          "position": 1
+                        }
+                      }
+                    ]
+                  }
+                },
+                "label": {
+                  "show": true
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 4,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "revenue",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "7c47bc81",
+                  "fields": [
+                    {
+                      "name": "sum(prev_revenue)",
+                      "expression": "SUM(`prev_revenue`)"
+                    },
+                    {
+                      "name": "sum(revenue)",
+                      "expression": "SUM(`revenue`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "showTitle": true,
+                "title": "Revenue"
+              },
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(revenue)"
+                },
+                "target": {
+                  "fieldName": "sum(prev_revenue)",
+                  "change": {
+                    "type": "percent"
+                  }
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 3,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "distance",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "7c47bc81",
+                  "fields": [
+                    {
+                      "name": "sum(prev_distance)",
+                      "expression": "SUM(`prev_distance`)"
+                    },
+                    {
+                      "name": "sum(distance)",
+                      "expression": "SUM(`distance`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "showTitle": true,
+                "title": "Distance"
+              },
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(distance)"
+                },
+                "target": {
+                  "fieldName": "sum(prev_distance)",
+                  "change": {
+                    "type": "percent"
+                  }
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 0,
+            "width": 3,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "passengers",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "7c47bc81",
+                  "fields": [
+                    {
+                      "name": "sum(prev_passengers)",
+                      "expression": "SUM(`prev_passengers`)"
+                    },
+                    {
+                      "name": "sum(passengers)",
+                      "expression": "SUM(`passengers`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "showTitle": true,
+                "title": "Passengers"
+              },
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(passengers)"
+                },
+                "target": {
+                  "fieldName": "sum(prev_passengers)",
+                  "change": {
+                    "type": "percent"
+                  }
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 0,
+            "width": 3,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "trips",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "7c47bc81",
+                  "fields": [
+                    {
+                      "name": "sum(prev_trips)",
+                      "expression": "SUM(`prev_trips`)"
+                    },
+                    {
+                      "name": "sum(trips)",
+                      "expression": "SUM(`trips`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "showTitle": true,
+                "title": "Trips"
+              },
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(trips)"
+                },
+                "target": {
+                  "fieldName": "sum(prev_trips)",
+                  "change": {
+                    "type": "percent"
+                  }
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 9,
+            "y": 0,
+            "width": 3,
+            "height": 3
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1"
+    },
+    {
+      "name": "7e1d85fe",
+      "displayName": "Page2",
+      "layout": [
+        {
+          "widget": {
+            "name": "d14e3d31",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "5867b2c1",
+                  "fields": [
+                    {
+                      "name": "heat_value",
+                      "expression": "`heat_value`"
+                    },
+                    {
+                      "name": "trip_date",
+                      "expression": "`trip_date`"
+                    },
+                    {
+                      "name": "metric_type",
+                      "expression": "`metric_type`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "mark": {
+                "layout": "layer"
+              },
+              "frame": {
+                "title": "Visualization 1",
+                "showTitle": true
+              },
+              "widgetType": "heatmap",
+              "encodings": {
+                "x": {
+                  "fieldName": "trip_date",
+                  "scale": {
+                    "type": "temporal"
+                  }
+                },
+                "y": {
+                  "fieldName": "metric_type",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "color": {
+                  "fieldName": "heat_value",
+                  "scale": {
+                    "type": "quantitative",
+                    "colorRamp": {
+                      "mode": "custom-diverging",
+                      "colors": {
+                        "start": "#B55959",
+                        "mid": "#F6F67E",
+                        "end": "#0A7D0A"
+                      }
+                    },
+                    "domain": {
+                      "min": 0,
+                      "max": 1
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 3,
+            "width": 12,
+            "height": 8
+          }
+        },
+        {
+          "widget": {
+            "name": "5d2ace25",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "670756aa",
+                  "fields": [
+                    {
+                      "name": "pickup_lat",
+                      "expression": "`pickup_lat`"
+                    },
+                    {
+                      "name": "pickup_lon",
+                      "expression": "`pickup_lon`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "symbol-map",
+              "encodings": {
+                "coordinates": {
+                  "latitude": {
+                    "fieldName": "pickup_lat"
+                  },
+                  "longitude": {
+                    "fieldName": "pickup_lon"
+                  }
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 11,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "b32a15cd",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "670756aa",
+                  "fields": [
+                    {
+                      "name": "dropoff_lat",
+                      "expression": "`dropoff_lat`"
+                    },
+                    {
+                      "name": "dropoff_lon",
+                      "expression": "`dropoff_lon`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "symbol-map",
+              "encodings": {
+                "coordinates": {
+                  "latitude": {
+                    "fieldName": "dropoff_lat"
+                  },
+                  "longitude": {
+                    "fieldName": "dropoff_lon"
+                  }
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 11,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "revenue",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "7c47bc81",
+                  "fields": [
+                    {
+                      "name": "sum(prev_revenue)",
+                      "expression": "SUM(`prev_revenue`)"
+                    },
+                    {
+                      "name": "sum(revenue)",
+                      "expression": "SUM(`revenue`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "showTitle": true,
+                "title": "Revenue"
+              },
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(revenue)"
+                },
+                "target": {
+                  "fieldName": "sum(prev_revenue)",
+                  "change": {
+                    "type": "percent"
+                  }
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 3,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "distance",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "7c47bc81",
+                  "fields": [
+                    {
+                      "name": "sum(prev_distance)",
+                      "expression": "SUM(`prev_distance`)"
+                    },
+                    {
+                      "name": "sum(distance)",
+                      "expression": "SUM(`distance`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "showTitle": true,
+                "title": "Distance"
+              },
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(distance)"
+                },
+                "target": {
+                  "fieldName": "sum(prev_distance)",
+                  "change": {
+                    "type": "percent"
+                  }
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 0,
+            "width": 3,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "passengers",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "7c47bc81",
+                  "fields": [
+                    {
+                      "name": "sum(prev_passengers)",
+                      "expression": "SUM(`prev_passengers`)"
+                    },
+                    {
+                      "name": "sum(passengers)",
+                      "expression": "SUM(`passengers`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "showTitle": true,
+                "title": "Passengers"
+              },
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(passengers)"
+                },
+                "target": {
+                  "fieldName": "sum(prev_passengers)",
+                  "change": {
+                    "type": "percent"
+                  }
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 0,
+            "width": 3,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "trips",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "7c47bc81",
+                  "fields": [
+                    {
+                      "name": "sum(prev_trips)",
+                      "expression": "SUM(`prev_trips`)"
+                    },
+                    {
+                      "name": "sum(trips)",
+                      "expression": "SUM(`trips`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "showTitle": true,
+                "title": "Trips"
+              },
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(trips)"
+                },
+                "target": {
+                  "fieldName": "sum(prev_trips)",
+                  "change": {
+                    "type": "percent"
+                  }
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 9,
+            "y": 0,
+            "width": 3,
+            "height": 3
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1"
+    },
+    {
+      "name": "e23e1b2e",
+      "displayName": "Global Filters",
+      "layout": [
+        {
+          "widget": {
+            "name": "97ece3bd",
+            "queries": [
+              {
+                "name": "dashboards/01f10b3925861f61b7a5137ec1424514/datasets/01f10b3cd6a617268bcb4e58ee5b6673_year",
+                "query": {
+                  "datasetName": "b2c73431",
+                  "fields": [
+                    {
+                      "name": "year",
+                      "expression": "`year`"
+                    },
+                    {
+                      "name": "year_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "dashboards/01f10b3925861f61b7a5137ec1424514/datasets/01f10bc69d1c134588363c810f1e52cd_year",
+                "query": {
+                  "datasetName": "1bc576cf",
+                  "fields": [
+                    {
+                      "name": "year",
+                      "expression": "`year`"
+                    },
+                    {
+                      "name": "year_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "dashboards/01f10b3925861f61b7a5137ec1424514/datasets/01f10bceb3391f78bb00aff956093188_year",
+                "query": {
+                  "datasetName": "5fc18ac7",
+                  "fields": [
+                    {
+                      "name": "year",
+                      "expression": "`year`"
+                    },
+                    {
+                      "name": "year_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "dashboards/01f10b3925861f61b7a5137ec1424514/datasets/01f10bdb7cb71a4e82c45c28a7e5ff7c_year",
+                "query": {
+                  "datasetName": "5867b2c1",
+                  "fields": [
+                    {
+                      "name": "year",
+                      "expression": "`year`"
+                    },
+                    {
+                      "name": "year_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "dashboards/01f10b3925861f61b7a5137ec1424514/datasets/01f10be257a51f68864993f1b71ad1d1_year",
+                "query": {
+                  "datasetName": "670756aa",
+                  "fields": [
+                    {
+                      "name": "year",
+                      "expression": "`year`"
+                    },
+                    {
+                      "name": "year_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "dashboards/01f10b3925861f61b7a5137ec1424514/datasets/01f10be5be2618129d8cd500336d8722_year",
+                "query": {
+                  "datasetName": "7c47bc81",
+                  "fields": [
+                    {
+                      "name": "year",
+                      "expression": "`year`"
+                    },
+                    {
+                      "name": "year_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "showTitle": true
+              },
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "year",
+                    "queryName": "dashboards/01f10b3925861f61b7a5137ec1424514/datasets/01f10b3cd6a617268bcb4e58ee5b6673_year"
+                  },
+                  {
+                    "fieldName": "year",
+                    "queryName": "dashboards/01f10b3925861f61b7a5137ec1424514/datasets/01f10bc69d1c134588363c810f1e52cd_year"
+                  },
+                  {
+                    "fieldName": "year",
+                    "queryName": "dashboards/01f10b3925861f61b7a5137ec1424514/datasets/01f10bceb3391f78bb00aff956093188_year"
+                  },
+                  {
+                    "fieldName": "year",
+                    "queryName": "dashboards/01f10b3925861f61b7a5137ec1424514/datasets/01f10bdb7cb71a4e82c45c28a7e5ff7c_year"
+                  },
+                  {
+                    "fieldName": "year",
+                    "queryName": "dashboards/01f10b3925861f61b7a5137ec1424514/datasets/01f10be257a51f68864993f1b71ad1d1_year"
+                  },
+                  {
+                    "fieldName": "year",
+                    "queryName": "dashboards/01f10b3925861f61b7a5137ec1424514/datasets/01f10be5be2618129d8cd500336d8722_year"
+                  }
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 1,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "month",
+            "queries": [
+              {
+                "name": "dashboards/01f10b3925861f61b7a5137ec1424514/datasets/01f10b3cd6a617268bcb4e58ee5b6673_month",
+                "query": {
+                  "datasetName": "b2c73431",
+                  "fields": [
+                    {
+                      "name": "month",
+                      "expression": "`month`"
+                    },
+                    {
+                      "name": "month_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "dashboards/01f10b3925861f61b7a5137ec1424514/datasets/01f10bc69d1c134588363c810f1e52cd_month",
+                "query": {
+                  "datasetName": "1bc576cf",
+                  "fields": [
+                    {
+                      "name": "month",
+                      "expression": "`month`"
+                    },
+                    {
+                      "name": "month_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "dashboards/01f10b3925861f61b7a5137ec1424514/datasets/01f10bceb3391f78bb00aff956093188_month",
+                "query": {
+                  "datasetName": "5fc18ac7",
+                  "fields": [
+                    {
+                      "name": "month",
+                      "expression": "`month`"
+                    },
+                    {
+                      "name": "month_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "dashboards/01f10b3925861f61b7a5137ec1424514/datasets/01f10bdb7cb71a4e82c45c28a7e5ff7c_month",
+                "query": {
+                  "datasetName": "5867b2c1",
+                  "fields": [
+                    {
+                      "name": "month",
+                      "expression": "`month`"
+                    },
+                    {
+                      "name": "month_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "dashboards/01f10b3925861f61b7a5137ec1424514/datasets/01f10be257a51f68864993f1b71ad1d1_month",
+                "query": {
+                  "datasetName": "670756aa",
+                  "fields": [
+                    {
+                      "name": "month",
+                      "expression": "`month`"
+                    },
+                    {
+                      "name": "month_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "dashboards/01f10b3925861f61b7a5137ec1424514/datasets/01f10be5be2618129d8cd500336d8722_month",
+                "query": {
+                  "datasetName": "7c47bc81",
+                  "fields": [
+                    {
+                      "name": "month",
+                      "expression": "`month`"
+                    },
+                    {
+                      "name": "month_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "showTitle": true,
+                "title": "month"
+              },
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "month",
+                    "queryName": "dashboards/01f10b3925861f61b7a5137ec1424514/datasets/01f10b3cd6a617268bcb4e58ee5b6673_month"
+                  },
+                  {
+                    "fieldName": "month",
+                    "queryName": "dashboards/01f10b3925861f61b7a5137ec1424514/datasets/01f10bc69d1c134588363c810f1e52cd_month"
+                  },
+                  {
+                    "fieldName": "month",
+                    "queryName": "dashboards/01f10b3925861f61b7a5137ec1424514/datasets/01f10bceb3391f78bb00aff956093188_month"
+                  },
+                  {
+                    "fieldName": "month",
+                    "queryName": "dashboards/01f10b3925861f61b7a5137ec1424514/datasets/01f10bdb7cb71a4e82c45c28a7e5ff7c_month"
+                  },
+                  {
+                    "fieldName": "month",
+                    "queryName": "dashboards/01f10b3925861f61b7a5137ec1424514/datasets/01f10be257a51f68864993f1b71ad1d1_month"
+                  },
+                  {
+                    "fieldName": "month",
+                    "queryName": "dashboards/01f10b3925861f61b7a5137ec1424514/datasets/01f10be5be2618129d8cd500336d8722_month"
+                  }
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 1,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "date",
+            "queries": [
+              {
+                "name": "dashboards/01f10b3925861f61b7a5137ec1424514/datasets/01f10b3cd6a617268bcb4e58ee5b6673_trip_date",
+                "query": {
+                  "datasetName": "b2c73431",
+                  "fields": [
+                    {
+                      "name": "trip_date",
+                      "expression": "`trip_date`"
+                    },
+                    {
+                      "name": "trip_date_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "dashboards/01f10b3925861f61b7a5137ec1424514/datasets/01f10bc69d1c134588363c810f1e52cd_trip_date",
+                "query": {
+                  "datasetName": "1bc576cf",
+                  "fields": [
+                    {
+                      "name": "trip_date",
+                      "expression": "`trip_date`"
+                    },
+                    {
+                      "name": "trip_date_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "dashboards/01f10b3925861f61b7a5137ec1424514/datasets/01f10bceb3391f78bb00aff956093188_trip_date",
+                "query": {
+                  "datasetName": "5fc18ac7",
+                  "fields": [
+                    {
+                      "name": "trip_date",
+                      "expression": "`trip_date`"
+                    },
+                    {
+                      "name": "trip_date_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "dashboards/01f10b3925861f61b7a5137ec1424514/datasets/01f10bdb7cb71a4e82c45c28a7e5ff7c_trip_date",
+                "query": {
+                  "datasetName": "5867b2c1",
+                  "fields": [
+                    {
+                      "name": "trip_date",
+                      "expression": "`trip_date`"
+                    },
+                    {
+                      "name": "trip_date_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "dashboards/01f10b3925861f61b7a5137ec1424514/datasets/01f10be257a51f68864993f1b71ad1d1_trip_date",
+                "query": {
+                  "datasetName": "670756aa",
+                  "fields": [
+                    {
+                      "name": "trip_date",
+                      "expression": "`trip_date`"
+                    },
+                    {
+                      "name": "trip_date_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "showTitle": true,
+                "title": "date"
+              },
+              "widgetType": "filter-date-picker",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "trip_date",
+                    "queryName": "dashboards/01f10b3925861f61b7a5137ec1424514/datasets/01f10b3cd6a617268bcb4e58ee5b6673_trip_date"
+                  },
+                  {
+                    "fieldName": "trip_date",
+                    "queryName": "dashboards/01f10b3925861f61b7a5137ec1424514/datasets/01f10bc69d1c134588363c810f1e52cd_trip_date"
+                  },
+                  {
+                    "fieldName": "trip_date",
+                    "queryName": "dashboards/01f10b3925861f61b7a5137ec1424514/datasets/01f10bceb3391f78bb00aff956093188_trip_date"
+                  },
+                  {
+                    "fieldName": "trip_date",
+                    "queryName": "dashboards/01f10b3925861f61b7a5137ec1424514/datasets/01f10bdb7cb71a4e82c45c28a7e5ff7c_trip_date"
+                  },
+                  {
+                    "fieldName": "trip_date",
+                    "queryName": "dashboards/01f10b3925861f61b7a5137ec1424514/datasets/01f10be257a51f68864993f1b71ad1d1_trip_date"
+                  }
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 4,
+            "width": 1,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "date-range",
+            "queries": [
+              {
+                "name": "dashboards/01f10b3925861f61b7a5137ec1424514/datasets/01f10b3cd6a617268bcb4e58ee5b6673_trip_date",
+                "query": {
+                  "datasetName": "b2c73431",
+                  "fields": [
+                    {
+                      "name": "trip_date",
+                      "expression": "`trip_date`"
+                    },
+                    {
+                      "name": "trip_date_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "dashboards/01f10b3925861f61b7a5137ec1424514/datasets/01f10bc69d1c134588363c810f1e52cd_trip_date",
+                "query": {
+                  "datasetName": "1bc576cf",
+                  "fields": [
+                    {
+                      "name": "trip_date",
+                      "expression": "`trip_date`"
+                    },
+                    {
+                      "name": "trip_date_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "dashboards/01f10b3925861f61b7a5137ec1424514/datasets/01f10bceb3391f78bb00aff956093188_trip_date",
+                "query": {
+                  "datasetName": "5fc18ac7",
+                  "fields": [
+                    {
+                      "name": "trip_date",
+                      "expression": "`trip_date`"
+                    },
+                    {
+                      "name": "trip_date_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "dashboards/01f10b3925861f61b7a5137ec1424514/datasets/01f10bdb7cb71a4e82c45c28a7e5ff7c_trip_date",
+                "query": {
+                  "datasetName": "5867b2c1",
+                  "fields": [
+                    {
+                      "name": "trip_date",
+                      "expression": "`trip_date`"
+                    },
+                    {
+                      "name": "trip_date_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "dashboards/01f10b3925861f61b7a5137ec1424514/datasets/01f10be257a51f68864993f1b71ad1d1_trip_date",
+                "query": {
+                  "datasetName": "670756aa",
+                  "fields": [
+                    {
+                      "name": "trip_date",
+                      "expression": "`trip_date`"
+                    },
+                    {
+                      "name": "trip_date_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "showTitle": true,
+                "title": "date range"
+              },
+              "widgetType": "filter-date-range-picker",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "trip_date",
+                    "queryName": "dashboards/01f10b3925861f61b7a5137ec1424514/datasets/01f10b3cd6a617268bcb4e58ee5b6673_trip_date"
+                  },
+                  {
+                    "fieldName": "trip_date",
+                    "queryName": "dashboards/01f10b3925861f61b7a5137ec1424514/datasets/01f10bc69d1c134588363c810f1e52cd_trip_date"
+                  },
+                  {
+                    "fieldName": "trip_date",
+                    "queryName": "dashboards/01f10b3925861f61b7a5137ec1424514/datasets/01f10bceb3391f78bb00aff956093188_trip_date"
+                  },
+                  {
+                    "fieldName": "trip_date",
+                    "queryName": "dashboards/01f10b3925861f61b7a5137ec1424514/datasets/01f10bdb7cb71a4e82c45c28a7e5ff7c_trip_date"
+                  },
+                  {
+                    "fieldName": "trip_date",
+                    "queryName": "dashboards/01f10b3925861f61b7a5137ec1424514/datasets/01f10be257a51f68864993f1b71ad1d1_trip_date"
+                  }
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 6,
+            "width": 1,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "1cd55995",
+            "queries": [
+              {
+                "name": "dashboards/01f10b3925861f61b7a5137ec1424514/datasets/01f10b3cd6a617268bcb4e58ee5b6673_vendor_id",
+                "query": {
+                  "datasetName": "b2c73431",
+                  "fields": [
+                    {
+                      "name": "vendor_id",
+                      "expression": "`vendor_id`"
+                    },
+                    {
+                      "name": "vendor_id_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "dashboards/01f10b3925861f61b7a5137ec1424514/datasets/01f10bc69d1c134588363c810f1e52cd_vendor_id",
+                "query": {
+                  "datasetName": "1bc576cf",
+                  "fields": [
+                    {
+                      "name": "vendor_id",
+                      "expression": "`vendor_id`"
+                    },
+                    {
+                      "name": "vendor_id_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "dashboards/01f10b3925861f61b7a5137ec1424514/datasets/01f10bceb3391f78bb00aff956093188_vendor_id",
+                "query": {
+                  "datasetName": "5fc18ac7",
+                  "fields": [
+                    {
+                      "name": "vendor_id",
+                      "expression": "`vendor_id`"
+                    },
+                    {
+                      "name": "vendor_id_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "dashboards/01f10b3925861f61b7a5137ec1424514/datasets/01f10bdb7cb71a4e82c45c28a7e5ff7c_vendor_id",
+                "query": {
+                  "datasetName": "5867b2c1",
+                  "fields": [
+                    {
+                      "name": "vendor_id",
+                      "expression": "`vendor_id`"
+                    },
+                    {
+                      "name": "vendor_id_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "dashboards/01f10b3925861f61b7a5137ec1424514/datasets/01f10be5be2618129d8cd500336d8722_vendor_id",
+                "query": {
+                  "datasetName": "7c47bc81",
+                  "fields": [
+                    {
+                      "name": "vendor_id",
+                      "expression": "`vendor_id`"
+                    },
+                    {
+                      "name": "vendor_id_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "dashboards/01f10b3925861f61b7a5137ec1424514/datasets/01f10be257a51f68864993f1b71ad1d1_vendor_id",
+                "query": {
+                  "datasetName": "670756aa",
+                  "fields": [
+                    {
+                      "name": "vendor_id",
+                      "expression": "`vendor_id`"
+                    },
+                    {
+                      "name": "vendor_id_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "showTitle": true,
+                "title": "Vendor ID"
+              },
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "vendor_id",
+                    "queryName": "dashboards/01f10b3925861f61b7a5137ec1424514/datasets/01f10b3cd6a617268bcb4e58ee5b6673_vendor_id"
+                  },
+                  {
+                    "fieldName": "vendor_id",
+                    "queryName": "dashboards/01f10b3925861f61b7a5137ec1424514/datasets/01f10bc69d1c134588363c810f1e52cd_vendor_id"
+                  },
+                  {
+                    "fieldName": "vendor_id",
+                    "queryName": "dashboards/01f10b3925861f61b7a5137ec1424514/datasets/01f10bceb3391f78bb00aff956093188_vendor_id"
+                  },
+                  {
+                    "fieldName": "vendor_id",
+                    "queryName": "dashboards/01f10b3925861f61b7a5137ec1424514/datasets/01f10bdb7cb71a4e82c45c28a7e5ff7c_vendor_id"
+                  },
+                  {
+                    "fieldName": "vendor_id",
+                    "queryName": "dashboards/01f10b3925861f61b7a5137ec1424514/datasets/01f10be5be2618129d8cd500336d8722_vendor_id"
+                  },
+                  {
+                    "fieldName": "vendor_id",
+                    "queryName": "dashboards/01f10b3925861f61b7a5137ec1424514/datasets/01f10be257a51f68864993f1b71ad1d1_vendor_id"
+                  }
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 8,
+            "width": 1,
+            "height": 2
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_GLOBAL_FILTERS",
+      "layoutVersion": "GRID_V1"
+    }
+  ],
+  "uiSettings": {
+    "theme": {
+      "canvasBackgroundColor": {
+        "light": "#FAFAFB",
+        "dark": "#1F272D"
+      },
+      "widgetBackgroundColor": {
+        "light": "#FFFFFF",
+        "dark": "#11171C"
+      },
+      "fontColor": {
+        "light": "#11171C",
+        "dark": "#E8ECF0"
+      },
+      "selectionColor": {
+        "light": "#25B422",
+        "dark": "#8ACAFF"
+      },
+      "visualizationColors": [
+        "#077A9D",
+        "#FFAB00",
+        "#00A972",
+        "#FF3621",
+        "#8BCAE7",
+        "#AB4057",
+        "#99DDB4",
+        "#FCA4A1",
+        "#919191",
+        "#BF7080"
+      ],
+      "widgetHeaderAlignment": "LEFT",
+      "fontFamily": "Arial"
+    },
+    "applyModeEnabled": false
+  }
+}
